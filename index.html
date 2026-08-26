@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="leather">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leathercraft CAD チュートリアル / Tutorials</title>
+<!--
+  ============================================================================
+  Leathercraft CAD チュートリアル (単一ファイル・自己完結)
+
+  ■ 更新手順
+    1. 下の TUTORIAL_STAMP を上げる (yyyymmddhhmm)
+    2. DATA の items に項目・動画を足す / 直す
+    3. GitHub へ push (GitHub Pages で公開される)
+    4. coffee-craft.net の versions の tutorial= 行を同じ値にする
+       → アプリ側の「チュートリアル更新」バッジと NEW バッジがこの値で動く
+
+  ■ 項目の書き方 (DATA.items の1要素)
+    id      : 安定ID。アプリからのディープリンク (#item=ID) に使うので変えない
+    cat     : DATA.cats の id
+    ja / en : 項目名
+    status  : 'video'   = 動画あり
+              'planned' = 準備中 (プレースホルダ兼備忘録)
+    updated : 'yyyymmddhhmm' この項目を最後に更新した日時 (NEW バッジ判定)
+    videos  : [{yt:'YouTube ID', ja:'ラベル', en:'label', member:true(限定動画)}]
+              先頭が最新。旧バージョンの動画は2つ目以降に置くと
+              「以前のバージョンの動画」として折りたたみ表示される
+    refs    : planned の項目に付ける「参考: 旧バージョンの動画」(形式は videos と同じ)
+    note_ja / note_en : 説明文 (動画が無い間の備忘録としても)
+
+  ■ アプリからの起動パラメータ (URLハッシュ)
+    #lang=ja&item=qs-1&seen=202608261200
+      lang : 初期言語 / item : 初期表示項目 / seen : 前回閲覧時の索引日時
+      (seen より新しい updated を持つ項目に NEW が付く)
+  ============================================================================
+-->
+<style>
+  :root, [data-theme="leather"] {
+    --bg: #f3ead9;        --bg2: #ece0c8;      --panel: #faf5ea;
+    --ink: #3b2a1a;       --ink2: #7a6248;     --line: #d8c6a4;
+    --acc: #8c5a2b;       --acc-ink: #fff;     --sel: #e5d3b3;
+    --new: #c0392b;       --planned: #a89778;  --shadow: rgba(59,42,26,.12);
+  }
+  [data-theme="light"] {
+    --bg: #f5f6f8;  --bg2: #eceef2; --panel: #ffffff;
+    --ink: #24292f; --ink2: #6a737d; --line: #d8dde3;
+    --acc: #2f6fb2; --acc-ink: #fff; --sel: #dfeafc;
+    --new: #d33f49; --planned: #9aa3ad; --shadow: rgba(0,0,0,.10);
+  }
+  [data-theme="dark"] {
+    --bg: #1e2126;  --bg2: #181a1e; --panel: #262a31;
+    --ink: #e6e8eb; --ink2: #9aa3ad; --line: #3a4048;
+    --acc: #5b9bd5; --acc-ink: #10151b; --sel: #33414f;
+    --new: #ff7b6b; --planned: #6d7681; --shadow: rgba(0,0,0,.35);
+  }
+  [data-theme="coffee"] {
+    --bg: #2b211a;  --bg2: #241b15; --panel: #33271e;
+    --ink: #ecdfcf; --ink2: #b09a83; --line: #4d3d2f;
+    --acc: #c8934f; --acc-ink: #26190f; --sel: #4a3826;
+    --new: #ff8f6b; --planned: #82705c; --shadow: rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo,
+                 "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.65;
+    display: flex; flex-direction: column;
+  }
+  a { color: var(--acc); }
+
+  /* ---- header ---- */
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--bg2);
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 17px; margin: 0; white-space: nowrap; }
+  header h1 .sub { color: var(--ink2); font-weight: normal; font-size: 12px; margin-left: 6px; }
+  #search {
+    flex: 1 1 160px; min-width: 120px; max-width: 340px;
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); color: var(--ink); font-size: 14px;
+  }
+  .hctl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .langbtn, #theme {
+    padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); color: var(--ink); font-size: 13px; cursor: pointer;
+  }
+  .langbtn.on { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+
+  /* ---- layout ---- */
+  #wrap { flex: 1; display: flex; min-height: 0; }
+  nav {
+    width: 320px; min-width: 240px; overflow-y: auto;
+    border-right: 1px solid var(--line); background: var(--bg2);
+    padding: 8px 0 24px;
+  }
+  main { flex: 1; overflow-y: auto; padding: 20px 28px 60px; }
+
+  /* ---- tree ---- */
+  .cat { margin: 2px 0; }
+  .cat > summary {
+    cursor: pointer; list-style: none; user-select: none;
+    padding: 7px 12px; font-weight: bold; font-size: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .cat > summary::before { content: "▸"; transition: transform .12s; color: var(--ink2); }
+  .cat[open] > summary::before { transform: rotate(90deg); }
+  .cat > summary:hover { background: var(--sel); }
+  .item {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 10px 5px 30px; cursor: pointer; font-size: 13.5px;
+    border-left: 3px solid transparent;
+  }
+  .item:hover { background: var(--sel); }
+  .item.sel { background: var(--sel); border-left-color: var(--acc); }
+  .item .ic { flex: 0 0 auto; font-size: 11px; }
+  .item.planned { color: var(--planned); }
+  .item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .done { color: var(--acc); font-size: 11px; margin-left: auto; }
+  .badge {
+    flex: 0 0 auto; font-size: 10px; font-weight: bold; border-radius: 4px;
+    padding: 0 5px; line-height: 16px; margin-left: auto;
+  }
+  .badge.new { background: var(--new); color: #fff; }
+  .item .done + .badge, .badge + .done { margin-left: 4px; }
+  .hidden { display: none !important; }
+
+  /* ---- content ---- */
+  #ttl { font-size: 21px; margin: 0 0 4px; }
+  #crumb { color: var(--ink2); font-size: 12.5px; margin-bottom: 14px; }
+  .vwrap {
+    position: relative; width: 100%; max-width: 880px;
+    aspect-ratio: 16 / 9; background: #000;
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 4px 16px var(--shadow); margin: 10px 0 6px;
+  }
+  .vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .vlabel { color: var(--ink2); font-size: 12.5px; margin-bottom: 14px; }
+  .memberCard, .placeholder {
+    max-width: 880px; border: 1px dashed var(--line); border-radius: 10px;
+    background: var(--panel); padding: 22px 24px; margin: 10px 0 16px;
+  }
+  .placeholder .big { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+  .memberCard .big { font-size: 15px; font-weight: bold; margin-bottom: 8px; }
+  .btn {
+    display: inline-block; margin: 6px 8px 0 0; padding: 8px 16px;
+    background: var(--acc); color: var(--acc-ink) !important;
+    border-radius: 7px; text-decoration: none; font-size: 14px;
+  }
+  .note { max-width: 880px; white-space: pre-wrap; }
+  details.old { max-width: 880px; margin-top: 18px; }
+  details.old > summary { cursor: pointer; color: var(--ink2); font-size: 13.5px; }
+  .chk { margin: 18px 0 0; font-size: 13.5px; color: var(--ink2); }
+  .chk input { vertical-align: -2px; }
+  footer {
+    padding: 10px 16px; border-top: 1px solid var(--line);
+    color: var(--ink2); font-size: 12px; background: var(--bg2);
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  #navToggle { display: none; }
+
+  @media (max-width: 720px) {
+    #wrap { flex-direction: column; }
+    nav { width: 100%; max-height: 45vh; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 14px; }
+    #navToggle {
+      display: block; width: 100%; padding: 8px; border: none;
+      background: var(--bg2); color: var(--ink); font-size: 14px;
+      border-bottom: 1px solid var(--line); cursor: pointer;
+    }
+    nav.collapsed { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Leathercraft CAD <span id="hSub" class="sub"></span></h1>
+  <input id="search" type="search">
+  <div class="hctl">
+    <button class="langbtn" id="btnJa" onclick="setLang('ja')">日本語</button>
+    <button class="langbtn" id="btnEn" onclick="setLang('en')">English</button>
+    <select id="theme" onchange="setTheme(this.value)"></select>
+  </div>
+</header>
+
+<button id="navToggle"></button>
+<div id="wrap">
+  <nav id="tree"></nav>
+  <main id="content"></main>
+</div>
+
+<footer>
+  <span id="fStamp"></span>
+  <a href="https://www.youtube.com/@coffee-and-craft/" target="_blank" rel="noopener">YouTube</a>
+  <a href="https://coffee-craft.net/" target="_blank" rel="noopener">coffee-craft.net</a>
+</footer>
+
+<script>
+'use strict';
+
+/* ============================================================
+   このページの索引更新日時。内容を更新したらここを上げて、
+   coffee-craft.net の versions の tutorial= 行も同じ値にする。
+   ============================================================ */
+const TUTORIAL_STAMP = '202608261200';
+
+const UI = {
+  ja: {
+    sub: 'チュートリアル', search: '検索…',
+    themes: { leather: 'テーマ: レザー', light: 'テーマ: ライト', dark: 'テーマ: ダーク', coffee: 'テーマ: コーヒー' },
+    plannedBig: '🎬 この項目の動画は準備中です',
+    plannedNote: '動画ができるまで、しばらくお待ちください。',
+    refs: '参考: 以前のバージョンで撮影した動画',
+    oldVideos: '以前のバージョンの動画',
+    memberBig: '🔑 この動画は YouTube メンバーシップ限定です',
+    memberNote: 'メンバーの方は下のボタンから YouTube でご覧いただけます（ブラウザで YouTube にログインしている必要があります）。',
+    watchOnYT: 'YouTube で見る', joinBtn: 'メンバーシップに加入する',
+    watched: '✔ この動画は見終わった（チェックはこのブラウザにだけ保存されます）',
+    newBadge: 'NEW', navToggle: '☰ 目次を開く／閉じる',
+    stamp: '索引更新: ', notFound: '該当する項目がありません',
+    welcomeTitle: 'ようこそ！',
+    welcomeBody: '左の目次からチュートリアルを選んでください。\n▶ の付いた項目には動画があります。作成中の項目（薄い色）も、どんな内容になるかを先に読むことができます。\n\nこのページはブラウザのブックマークに登録しておくと、アプリを起動していなくてもいつでも見られます。',
+  },
+  en: {
+    sub: 'Tutorials', search: 'Search…',
+    themes: { leather: 'Theme: Leather', light: 'Theme: Light', dark: 'Theme: Dark', coffee: 'Theme: Coffee' },
+    plannedBig: '🎬 The video for this topic is coming soon',
+    plannedNote: 'Please check back later.',
+    refs: 'Reference: videos recorded with earlier versions',
+    oldVideos: 'Videos from earlier versions',
+    memberBig: '🔑 This video is for YouTube channel members',
+    memberNote: 'Members can watch it on YouTube using the button below (you need to be signed in to YouTube in this browser).',
+    watchOnYT: 'Watch on YouTube', joinBtn: 'Join the membership',
+    watched: '✔ Mark as watched (saved only in this browser)',
+    newBadge: 'NEW', navToggle: '☰ Toggle contents',
+    stamp: 'Index updated: ', notFound: 'No matching topics',
+    welcomeTitle: 'Welcome!',
+    welcomeBody: 'Pick a topic from the contents on the left.\nTopics marked with ▶ have videos. Greyed-out topics are planned — you can still read what they will cover.\n\nBookmark this page to revisit the tutorials any time, even without launching the app.',
+  }
+};
+
+/* ============================================================
+   目次とコンテンツの定義
+   ============================================================ */
+const DATA = {
+  cats: [
+    { id: 'quickstart', ja: 'クイックスタート',            en: 'Quick Start' },
+    { id: 'draw',       ja: '作図：基本図形',              en: 'Drawing: Basic Shapes' },
+    { id: 'edit',       ja: '作図：編集と基本機能',        en: 'Drawing: Editing & Core Tools' },
+    { id: 'print',      ja: '印刷',                        en: 'Printing' },
+    { id: 'advanced',   ja: '応用機能',                    en: 'Advanced Features' },
+    { id: 'sim',        ja: 'シミュレータ',                en: 'Simulators' },
+    { id: 'bonus',      ja: 'おまけ機能',                  en: 'Bonus Features' },
+    { id: 'member',     ja: 'メンバー向け',                en: 'For Members' },
+    { id: 'faq',        ja: '困ったときは',                en: 'Troubleshooting' },
+  ],
+
+  items: [
+  /* ---------------- クイックスタート ---------------- */
+  { id: 'qs-1', cat: 'quickstart', status: 'planned', updated: '202608261200',
+    ja: 'その1：IDパスケースの型紙を作ってみる',
+    en: 'Part 1: Make an ID pass case pattern',
+    note_ja: 'IDパスケースの型紙をゼロから作りながら、Leathercraft CAD で何ができるのかを一通り見ていきます。（v4.0 対応版を準備中）',
+    note_en: 'Build an ID pass case pattern from scratch and see what Leathercraft CAD can do. (v4.0 version in preparation)',
+    refs: [ { yt: '6S2XxOxhBTg', ja: 'ベータ版時代のパスケース作成チュートリアル (#03)', en: 'Pass case tutorial from the beta era (#03)' } ] },
+  { id: 'qs-2', cat: 'quickstart', status: 'planned', updated: '202608261200',
+    ja: 'その2：画面構成とツールの全体像',
+    en: 'Part 2: The screen layout and the tools',
+    note_ja: '画面の各部の名前、ズームとパン、左側のツールボタン、選択モードなど、操作の土台をまとめて解説します。（v4.0 対応版を準備中）',
+    note_en: 'Names of the screen areas, zoom & pan, the tool buttons on the left, selection mode — the foundation of everything. (v4.0 version in preparation)',
+    refs: [ { yt: 'VIR9YHZ8O04', ja: 'ベータ版時代の「始めに見る動画」(#01)', en: '"Watch this first" from the beta era (#01)' },
+            { yt: 'egWbJ1tOYRc', ja: 'レザークラフトCAD入門', en: 'Introduction to Leathercraft CAD' } ] },
+  { id: 'qs-3', cat: 'quickstart', status: 'planned', updated: '202608261200',
+    ja: 'その3：IDパスケースをカスタマイズしてみる',
+    en: 'Part 3: Customize the ID pass case',
+    note_ja: 'その1で作った型紙のサイズや目打ちピッチを変えたり、名入れをしたり。自分の型紙に育てていく方法を学びます。（v4.0 対応版を準備中）',
+    note_en: 'Change the size and stitch pitch of the pattern from Part 1, add a name stamp, and make the pattern your own. (v4.0 version in preparation)' },
+  { id: 'qs-4', cat: 'quickstart', status: 'video', updated: '202608261200',
+    ja: 'コースターを1分で描いてみる（丸・四角）',
+    en: 'Draw a coaster in one minute (round & square)',
+    note_ja: 'まずは一番簡単な型紙から。丸コースターと四角コースターを1分ちょっとで描きます。',
+    note_en: 'Start with the simplest patterns: a round and a square coaster, each in about a minute.',
+    videos: [ { yt: 'YavGSNW_Te4', ja: '丸いコースターを1分未満で作る', en: 'Round coaster in under a minute' },
+              { yt: 'kEtW9epswE8', ja: '四角いコースターを1分ちょいで作る', en: 'Square coaster in just over a minute' } ] },
+
+  /* ---------------- 作図：基本図形 ---------------- */
+  { id: 'draw-line', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: '直線・ポリライン',
+    en: 'Lines & polylines',
+    note_ja: '直線の引き方、長さ・角度の指定、水平・垂直、連続線。',
+    note_en: 'Drawing lines, specifying length and angle, horizontal/vertical, continuous lines.',
+    refs: [ { yt: 'F7d44_O1y5U', ja: '直線だけで幾何学図形を描く (#08)', en: 'Geometric figures with lines only (#08)' } ] },
+  { id: 'draw-circle', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: '円・楕円',
+    en: 'Circles & ellipses',
+    note_ja: '中心と半径・直径の指定、楕円の描き方。',
+    note_en: 'Center/radius/diameter input and ellipses.' },
+  { id: 'draw-arc', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: '円弧（アーク）',
+    en: 'Arcs',
+    note_ja: '円弧の描き方あれこれ。',
+    note_en: 'Ways to draw arcs.',
+    refs: [ { yt: 'NZczNr95Wig', ja: 'v1.1.0 紹介（寸法線・トリミング・円弧）', en: 'v1.1.0 intro (dimensions, trimming, arcs)' } ] },
+  { id: 'draw-bezier', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: 'ベジエ曲線（基本）',
+    en: 'Bezier curves (basics)',
+    note_ja: 'ベジエ曲線の描き方、コントロールポイントの考え方、トリミングと分割。',
+    note_en: 'Drawing bezier curves, understanding control points, trimming and splitting.' },
+  { id: 'draw-bezier-handles', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: 'ベジエ曲線（ハンドル操作と修飾キー）',
+    en: 'Bezier curves (handles & modifier keys)',
+    note_ja: 'ハンドルのドラッグ中に Shift で方向を保ったまま長さだけ変更、Ctrl+Shift で反対側ハンドルと対称に。きれいな曲線を素早く作るための操作集。',
+    note_en: 'While dragging a handle: Shift keeps the direction and changes only the length; Ctrl+Shift moves the opposite handle symmetrically. Tricks for clean curves, fast.' },
+  { id: 'draw-tangent', cat: 'draw', status: 'video', updated: '202608261200',
+    ja: '共通接円・共通接線',
+    en: 'Common tangent circles & lines',
+    note_ja: '2つの図形に接する円や線を自動で求める機能。正確で美しい曲線デザインに。',
+    note_en: 'Automatically find circles and lines tangent to two shapes — for accurate, beautiful curve design.',
+    videos: [ { yt: 'e09e8ck7Q_s', ja: 'v3.1.2 共通接円／共通接線', en: 'v3.1.2 common tangents (Japanese)' } ] },
+  { id: 'draw-text', cat: 'draw', status: 'video', updated: '202608261200',
+    ja: 'テキスト（フォント・アーチ文字）',
+    en: 'Text (fonts & arched text)',
+    note_ja: '文字入れ、フォント選択、アーチ状のテキスト。名入れや刻印のデザインに。',
+    note_en: 'Text shapes, font selection, arched text — for name stamps and engraving designs.',
+    videos: [ { yt: '-03rJf6E37k', ja: 'v2.1.4 アーチ状テキスト・フォント追加ほか', en: 'v2.1.4 arched text, more fonts, etc.' } ] },
+  { id: 'draw-dim', cat: 'draw', status: 'planned', updated: '202608261200',
+    ja: '寸法線・距離目印',
+    en: 'Dimension lines & distance marks',
+    note_ja: '寸法線の入れ方と距離目印機能。',
+    note_en: 'Adding dimension annotations and distance marks.',
+    refs: [ { yt: 'NZczNr95Wig', ja: 'v1.1.0 紹介（寸法線・トリミング・円弧）', en: 'v1.1.0 intro (dimensions, trimming, arcs)' } ] },
+
+  /* ---------------- 作図：編集と基本機能 ---------------- */
+  { id: 'edit-select', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: '選択・移動・コピー（トップツールバーの機能）',
+    en: 'Select, move, copy (the top toolbar)',
+    note_ja: '選択モードのときに上部ツールバーに並ぶ各機能（反転・回転・整列・グループ化など）もここでまとめて解説します。',
+    note_en: 'Covers everything on the top toolbar in selection mode: flip, rotate, align, grouping, and more.' },
+  { id: 'edit-transform', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: '変形（拡大縮小・回転・線対称）',
+    en: 'Transform (scale, rotate, mirror)',
+    note_ja: 'マウスハンドルでの変形と、数値指定での変形。線対称コピーも。',
+    note_en: 'Transforming with mouse handles and with numeric input, plus mirror copies.',
+    refs: [ { yt: 'ZCH9A5DkLlc', ja: 'v1.2.8 回転機能', en: 'v1.2.8 rotation features' },
+            { yt: '1sBNGreym10', ja: 'v0.9.10 線対称機能', en: 'v0.9.10 mirror feature' } ] },
+  { id: 'edit-numeric', cat: 'edit', status: 'video', updated: '202608261200',
+    ja: '数値を指定して長さ・角度・直径を変える',
+    en: 'Set exact length, angle and diameter',
+    note_ja: '図形を選んで数値を打つだけ。型紙の寸法をきっちり合わせるための機能です。',
+    note_en: 'Select a shape and type the number — the way to make patterns exactly the right size.',
+    videos: [ { yt: 'aSQTkGhMTRo', ja: 'v2.3.1 予告：数値指定で図形の寸法を変更', en: 'v2.3.1 preview: numeric editing' } ] },
+  { id: 'edit-chamfer', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: '面取り（角丸め）',
+    en: 'Chamfer / fillet (rounded corners)',
+    note_ja: '角の丸め方、半径の指定、離れた直線同士の面取り。',
+    note_en: 'Rounding corners, setting the radius, chamfering lines that do not touch.',
+    refs: [ { yt: '0oPNze9JkUM', ja: '離れた直線の面取り・Zキー伸長 (v2.2.1予告)', en: 'Chamfering apart lines & Z-key extension (v2.2.1 preview)' } ] },
+  { id: 'edit-offset', cat: 'edit', status: 'video', updated: '202608261200',
+    ja: 'オフセット／スマートオフセット',
+    en: 'Offset / Smart Offset',
+    note_ja: '輪郭から一定距離の線（縫い代・縫い線）を作る機能。ベジエ曲線を含む輪郭もスマートオフセットで一発です。',
+    note_en: 'Create lines at a fixed distance from an outline (seam allowances, stitch lines). Smart Offset handles outlines with bezier curves in one go.',
+    videos: [ { yt: 'Doy_-PIMJ5U', ja: 'v3.5.0 スマートオフセットほか', en: 'v3.5.0 Smart Offset and more (Japanese)' },
+              { yt: 'F5IpJdQAWzM', ja: 'ベジエ曲線の綺麗なオフセットを描く方法（旧方式）', en: 'Clean bezier offsets (older method)' } ] },
+  { id: 'edit-trim', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: 'トリム・分割・延長',
+    en: 'Trim, split, extend',
+    note_ja: 'はみ出した線の切り落とし、交点での分割、Zキーでの延長・トリミング。',
+    note_en: 'Cutting off overshoots, splitting at intersections, extending/trimming with the Z key.',
+    refs: [ { yt: 'NZczNr95Wig', ja: 'v1.1.0 紹介（寸法線・トリミング・円弧）', en: 'v1.1.0 intro (dimensions, trimming, arcs)' } ] },
+  { id: 'edit-stitch', cat: 'edit', status: 'video', updated: '202608261200',
+    ja: '目打ち（縫い穴）',
+    en: 'Stitch holes (pricking)',
+    note_ja: '縫い線に沿った目打ち、ピッチの調整、穴数を指定した目打ち。',
+    note_en: 'Punching holes along stitch lines, adjusting pitch, and fixing the number of holes.',
+    videos: [ { yt: 'fL0u2dV4XI0', ja: '目打ち機能の使い方 (#02)', en: 'How to use pricking (#02)' },
+              { yt: '3QqJiJ5ng-M', ja: 'v2.5.6 穴数を指定した目打ち', en: 'v2.5.6 fixed-count pricking' } ] },
+  { id: 'edit-align', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: '整列とスマートアライメント',
+    en: 'Alignment & Smart Alignment',
+    note_ja: 'v4.0 の目玉機能。図形同士をきれいに揃えるスマートアライメントの解説動画を準備中です。',
+    note_en: 'The headline feature of v4.0. A video about Smart Alignment — snapping shapes neatly to each other — is in preparation.',
+    refs: [ { yt: 'E5oYPGwgcGs', ja: '[英語] 図形のグループを指定した線に揃える方法', en: '[EN] Aligning a group of shapes to a line' } ] },
+  { id: 'edit-layer', cat: 'edit', status: 'planned', updated: '202608261200',
+    ja: 'レイヤー',
+    en: 'Layers',
+    note_ja: 'レイヤーの作成・切り替え・結合。パーツごとの整理に。',
+    note_en: 'Creating, switching and merging layers to organize parts.' },
+  { id: 'edit-color', cat: 'edit', status: 'video', updated: '202608261200',
+    ja: '色塗りと白背景モード',
+    en: 'Color filling & white background mode',
+    note_ja: '図形の塗りつぶしと背景色の切り替え。',
+    note_en: 'Filling shapes with color and switching the background.',
+    videos: [ { yt: 'kAcc0r4cHd8', ja: 'v2.0.7 色塗り機能・白背景モードほか', en: 'v2.0.7 color filling, white background, etc.' } ] },
+
+  /* ---------------- 印刷 ---------------- */
+  { id: 'print-basic', cat: 'print', status: 'video', updated: '202608261200',
+    ja: '印刷プレビューと分割（タイル）印刷',
+    en: 'Print preview & tiled printing',
+    note_ja: '複数ページへの分割印刷、印刷領域の調整、XY定規の印刷。',
+    note_en: 'Splitting a big pattern across pages, adjusting print areas, printing the XY rulers.',
+    videos: [ { yt: 'dQZTC-G3mGk', ja: 'v1.5.5a 複数ページ・タイル印刷', en: 'v1.5.5a multi-page & tile printing' },
+              { yt: 'oy5JCN5aP0s', ja: '印刷機能のあれこれ (#04)', en: 'All about printing (#04)' } ] },
+  { id: 'print-calib', cat: 'print', status: 'planned', updated: '202608261200',
+    ja: 'プリンタキャリブレーション（原寸合わせ）',
+    en: 'Printer calibration (true-to-size printing)',
+    note_ja: '印刷した型紙を正確に原寸にするためのキャリブレーション。v4.0 でプリンタごとの設定とガイド付きの手順に生まれ変わりました。その解説動画を準備中です。',
+    note_en: 'Calibration to make printed patterns exactly true to size. Rebuilt in v4.0 with per-printer values and a guided flow — video in preparation.' },
+  { id: 'print-pdf', cat: 'print', status: 'planned', updated: '202608261200',
+    ja: 'PDF出力',
+    en: 'PDF export',
+    note_ja: '型紙をPDFとして保存して、コンビニ印刷や共有に使う方法。',
+    note_en: 'Saving patterns as PDF for print shops and sharing.' },
+  { id: 'print-mac', cat: 'print', status: 'video', updated: '202608261200',
+    ja: 'Macでの印刷',
+    en: 'Printing on the Mac',
+    note_ja: 'Mac特有の印刷まわりの話。仮想プリンターの追加方法も。',
+    note_en: 'Mac-specific printing topics, including adding a virtual printer.',
+    videos: [ { yt: 'lLABV3yXrWM', ja: 'Macに仮想プリンターを追加する方法', en: 'Adding a virtual printer on macOS' } ] },
+
+  /* ---------------- 応用機能 ---------------- */
+  { id: 'adv-koma', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: '駒合わせ縫いヘルパー',
+    en: 'Butt-stitch (Koma-awase) helper',
+    note_ja: '立体物の縫い合わせ穴をぴったり合わせる奥義機能。',
+    en_note: '',
+    note_en: 'The secret weapon for matching stitch holes on three-dimensional seams.',
+    videos: [ { yt: 'qICF-laDIlI', ja: '駒合わせ縫いヘルパー機能の紹介 (#07)', en: 'Koma-awase helper (#07)' } ] },
+  { id: 'adv-machi', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: 'マチの作成',
+    en: 'Making gussets',
+    note_ja: 'マチ（ガゼット）を簡単に作る方法。',
+    note_en: 'The easy way to create gussets.',
+    videos: [ { yt: '7IDn2r3_TQc', ja: 'マチを簡単に作成する方法', en: 'Easy gusset creation' } ] },
+  { id: 'adv-mandala', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: 'マンダラ・ケルト模様',
+    en: 'Mandala & Celtic knot patterns',
+    note_ja: 'カービングやスタンピングの下絵になる幾何学模様を素早く描く機能。',
+    note_en: 'Quickly draw geometric patterns for carving and stamping designs.',
+    videos: [ { yt: '9yXLgcrIzfo', ja: '曼荼羅模様を簡単に描く方法', en: 'Drawing mandalas easily' },
+              { yt: 'DjjqDmCH0ZM', ja: 'ケルト模様を2分で描く方法', en: 'A Celtic knot in two minutes' } ] },
+  { id: 'adv-trace', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: 'トレース（透かし）で紙の型紙を取り込む',
+    en: 'Tracing paper patterns with the watermark feature',
+    note_ja: 'スキャンした型紙や他アプリの図面を透かしとして表示し、なぞって正確なデータにする方法。',
+    note_en: 'Show a scanned pattern or drawing as a tracing image and redraw it into precise CAD data.',
+    videos: [ { yt: 'EZSqRywBH4I', ja: 'スキャン画像を透かしにしてレザクラする方法 (#06)', en: 'Tracing from a scanned image (#06)' },
+              { yt: '4EOxTlC-rw8', ja: '型紙集のスキャンをトレースするテクニック (#09)', en: 'Tracing from pattern books (#09)' } ] },
+  { id: 'adv-import', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: 'インポート（PDF・SVG）',
+    en: 'Import (PDF & SVG)',
+    note_ja: 'PDFやSVGの取り込み。MacでのPDFインポートも。',
+    note_en: 'Importing PDFs and SVGs, including PDF import on the Mac.',
+    videos: [ { yt: 'PRm30jgBMYA', ja: 'v2.7.0 PDF透かし機能の大幅アップデート', en: 'v2.7.0 PDF tracing update (Japanese)' } ] },
+  { id: 'adv-export', cat: 'advanced', status: 'video', updated: '202608261200',
+    ja: 'エクスポート（SVG・DXF・レーザー加工機）',
+    en: 'Export (SVG, DXF, laser cutters)',
+    note_ja: 'カッティングマシンやレーザー加工機（xToolなど）用のデータ出力。',
+    note_en: 'Exporting data for cutting machines and laser cutters such as xTool.',
+    videos: [ { yt: 'iRmJfGBMiZI', ja: 'xToolなどで使える箱組みの箱を作る方法', en: 'Making finger-jointed boxes for laser cutters' } ] },
+  { id: 'adv-repo', cat: 'advanced', status: 'planned', updated: '202608261200',
+    ja: 'パーツ倉庫（リポジトリ）',
+    en: 'The parts repository',
+    note_ja: 'よく使うパーツの保存と再利用。テンプレートの取り込みも。',
+    note_en: 'Saving and reusing common parts, plus importing templates.',
+    refs: [ { yt: 'yx0Z2VJ-rDU', ja: 'v1.5.4 リポジトリ機能強化ほか', en: 'v1.5.4 repository improvements' } ] },
+  { id: 'adv-3d', cat: 'advanced', status: 'planned', updated: '202608261200',
+    ja: '3D型紙・治具（STLエクスポート）',
+    en: '3D templates & jigs (STL export)',
+    note_ja: '型紙から3Dプリンタ用の治具やテンプレートを作る機能。',
+    note_en: 'Turning patterns into 3D-printable jigs and templates.',
+    refs: [ { yt: 'Doy_-PIMJ5U', ja: 'v3.5.0 紹介（3D型紙・治具を含む）', en: 'v3.5.0 intro (includes 3D templates)' } ] },
+
+  /* ---------------- シミュレータ ---------------- */
+  { id: 'sim-leather', cat: 'sim', status: 'video', updated: '202608261200',
+    ja: '革シミュレータ（基本）',
+    en: 'Leather simulator (basics)',
+    note_ja: '型紙に本物の革の質感を重ねて、完成イメージをバーチャルで確認。',
+    note_en: 'Preview your pattern with real leather textures before cutting anything.',
+    videos: [ { yt: 'gI7RRxkLhg8', ja: 'v2.2.0 革シミュレーター機能', en: 'v2.2.0 the leather simulator (Japanese)' } ] },
+  { id: 'sim-leather-adv', cat: 'sim', status: 'video', updated: '202608261200',
+    ja: '複雑な型紙で革シミュレータを使う',
+    en: 'The leather simulator on complex patterns',
+    note_ja: '閉じていない輪郭・入り組んだパターンでシミュレータを使うコツ。',
+    note_en: 'Tips for simulating patterns with open or intricate outlines.',
+    videos: [ { yt: 'Y_TpSXsnTLc', ja: '複雑な型紙パターンで革シミュレータを使う方法', en: 'Using the simulator on complex patterns' } ] },
+  { id: 'sim-stitch', cat: 'sim', status: 'video', updated: '202608261200',
+    ja: 'ステッチシミュレータと糸カタログ',
+    en: 'Stitch simulator & thread catalogue',
+    note_ja: '手持ちの糸の色で縫い上がりを再現。実物の糸から作った糸カタログの使い方。',
+    note_en: 'Preview stitches in the colors of real threads, using the photo-derived thread catalogue.',
+    videos: [ { yt: '6CkEmCHbkTY', ja: 'v3.7.5 糸カタログ・検図・透かし', en: 'v3.7.5 thread catalogue & more' },
+              { yt: '2ZKANI8WnhU', ja: 'v1.2.5 ステッチ・シミュレーター', en: 'v1.2.5 the stitch simulator' } ] },
+  { id: 'sim-dye', cat: 'sim', status: 'planned', updated: '202608261200',
+    ja: '染色シミュレータ',
+    en: 'Dye simulator',
+    note_ja: '染料の重ね塗りをシミュレーションしたり、目標の色から染料の組み合わせを逆算したりできる機能。実は v3.6.1 からひっそり搭載されています。解説動画を準備中です。',
+    note_en: 'Simulate layered dyeing, or search backwards from a target color to a dye recipe. Quietly shipped in v3.6.1 — explainer video in preparation.' },
+  { id: 'sim-stamp', cat: 'sim', status: 'video', updated: '202608261200',
+    ja: '刻印・スタンプのシミュレーション',
+    en: 'Stamp & carving simulation',
+    note_ja: 'スタッズやバスケット刻印などのシミュレーションに使える機能。',
+    note_en: 'Features useful for simulating studs and basket-weave stamping.',
+    videos: [ { yt: 'ePuw843L2Bc', ja: 'スタッズ・バスケット刻印シミュレーション (#05)', en: 'Studs & basket stamping (#05)' } ] },
+
+  /* ---------------- おまけ機能 ---------------- */
+  { id: 'bonus-about', cat: 'bonus', status: 'video', updated: '202608261200',
+    ja: 'おまけ機能とは？（アンロック方法）',
+    en: 'What are the bonus features? (How to unlock)',
+    note_ja: 'YouTubeメンバーシップに加入すると使えるようになる「おまけ機能」の紹介と、アンロックの手順。',
+    note_en: 'An introduction to the bonus features unlocked by joining the YouTube membership, and how to unlock them.',
+    videos: [ { yt: 'lB6XIk852RM', ja: 'メンバーシップへようこそ！', en: 'Welcome to the membership! (Japanese)' } ] },
+  { id: 'bonus-boxjoint', cat: 'bonus', status: 'video', updated: '202608261200',
+    ja: '箱組みデザイナー（Box Joint）',
+    en: 'Box joint designer',
+    note_ja: 'あられ組みの箱を簡単に設計。レーザー加工機との相性抜群です。',
+    note_en: 'Design finger-jointed boxes with ease — perfect with a laser cutter.',
+    videos: [ { yt: 'Vt-rYFMoN6I', ja: 'v1.9.0 いろんな箱を作れます', en: 'v1.9.0 making all kinds of boxes' } ] },
+  { id: 'bonus-dicecup', cat: 'bonus', status: 'video', updated: '202608261200',
+    ja: 'ダイスカップデザイナー',
+    en: 'Dice cup designer',
+    note_ja: '円錐台形のダイスカップの型紙を自動生成。',
+    note_en: 'Automatically generate patterns for cone-shaped dice cups.',
+    videos: [ { yt: '56hPxyIWDo8', ja: 'v2.8.3 ダイスカップデザイナーほか', en: 'v2.8.3 dice cup designer and more' } ] },
+  { id: 'bonus-stamp', cat: 'bonus', status: 'video', updated: '202608261200',
+    ja: '文字刻印シミュレータ',
+    en: 'Letter stamp simulator',
+    note_ja: '文字刻印や箔押しの位置決めに便利なシミュレータ。',
+    note_en: 'A simulator that helps position letter stamps and foil stamping.',
+    videos: [ { yt: 'mgKRW8YODXg', ja: '文字刻印シミュレータの紹介', en: 'The letter stamp simulator' } ] },
+  { id: 'bonus-watch', cat: 'bonus', status: 'planned', updated: '202608261200',
+    ja: '時計バンドデザイナー',
+    en: 'Watch band designer',
+    note_ja: '腕時計のバンド（ベルト）の型紙を寸法から自動生成する機能。',
+    note_en: 'Generate watch band patterns from measurements.' },
+
+  /* ---------------- メンバー向け ---------------- */
+  { id: 'member-01', cat: 'member', status: 'video', updated: '202608261200',
+    ja: 'メンバー限定#01 作者の使い方を見てみる',
+    en: 'Members-only #01: Watch how the author works',
+    note_ja: '作者が実際にどうレザクラCADを使うのか、ノーカットに近い形でお見せします。',
+    note_en: 'See how the author actually uses Leathercraft CAD, nearly uncut.',
+    videos: [ { yt: 'dZJXmefekQc', member: true, ja: 'メンバー限定#01', en: 'Members-only #01' } ] },
+  { id: 'member-02', cat: 'member', status: 'video', updated: '202608261200',
+    ja: 'メンバー限定#02 IDパスケースで基本を全て学ぶ',
+    en: 'Members-only #02: All the basics via an ID pass case',
+    note_ja: 'IDパスケースを作りながら、基本操作を丁寧に全て解説するロング動画。',
+    note_en: 'A long-form video covering every basic operation while building an ID pass case.',
+    videos: [ { yt: 'waTJWh8SeBM', member: true, ja: 'メンバー限定#02', en: 'Members-only #02' } ] },
+  { id: 'member-patterns', cat: 'member', status: 'planned', updated: '202608261200',
+    ja: 'メンバー専用型紙のダウンロード',
+    en: 'Member-only pattern downloads',
+    note_ja: 'メンバー専用の型紙データの配布場所をここにまとめる予定です。',
+    note_en: 'Links to member-only pattern downloads will be collected here.' },
+
+  /* ---------------- 困ったときは ---------------- */
+  { id: 'faq-print-size', cat: 'faq', status: 'planned', updated: '202608261200',
+    ja: '印刷した型紙のサイズが合わない',
+    en: 'Printed patterns are not true to size',
+    note_ja: 'プリンタは機種ごとにわずかな拡大縮小の癖があります。「印刷 > プリンタキャリブレーション」で補正してください（チュートリアルの「印刷」カテゴリ参照）。',
+    note_en: 'Every printer scales slightly differently. Use Print > Printer Calibration to correct it (see the Printing category).' },
+  { id: 'faq-connect', cat: 'faq', status: 'planned', updated: '202608261200',
+    ja: '目打ちやオフセットが輪郭の途中で止まる',
+    en: 'Pricking or offsets stop partway along an outline',
+    note_ja: '線の端が僅かに離れていて、輪郭がつながっていないのが典型的な原因です。図面チェック（検図）機能で接続の問題を見つけて直す方法を解説予定。',
+    note_en: 'The usual cause: endpoints that almost — but not quite — touch. A video on finding and fixing these with the drawing check feature is planned.' },
+  { id: 'faq-mac-sonoma', cat: 'faq', status: 'video', updated: '202608261200',
+    ja: 'macOSで画面の解像度がおかしい',
+    en: 'Wrong screen resolution on macOS',
+    note_ja: 'macOS Sonoma で画面がぼやける・解像度が合わない場合の対処法。',
+    note_en: 'What to do when the app looks blurry or mis-scaled on macOS Sonoma.',
+    videos: [ { yt: 'QG6JFO2WC14', ja: 'macOS Sonoma 14.0での解像度不具合の修正方法', en: 'Fixing the resolution issue on macOS Sonoma' } ] },
+  { id: 'faq-shortcut', cat: 'faq', status: 'planned', updated: '202608261200',
+    ja: 'ショートカットキー一覧はどこ？',
+    en: 'Where is the shortcut key list?',
+    note_ja: 'アプリ内の「ヘルプ > ホットキー一覧」で確認できます。よく使うものを動画でも紹介予定。',
+    note_en: 'See Help > Hot Key List inside the app. A video on the most useful ones is planned.' },
+  ]
+};
+
+const MEMBER_JOIN_URL = 'https://www.youtube.com/channel/UC59IzHV7gmbncsS0oeiC1yQ/join';
+
+/* ============================================================
+   ここから下は仕組み。項目の追加だけなら触る必要はありません。
+   ============================================================ */
+let lang = 'ja';
+let seenStamp = '';      // アプリから渡される「前回閲覧時の索引日時」
+let curItem = null;
+let watched = {};
+try { watched = JSON.parse(localStorage.getItem('lcadTutWatched') || '{}'); } catch (e) {}
+
+function parseHash() {
+  const h = {};
+  for (const kv of location.hash.replace(/^#/, '').split('&')) {
+    const i = kv.indexOf('=');
+    if (i > 0) h[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1));
+  }
+  return h;
+}
+
+function setLang(l) {
+  lang = (l === 'en') ? 'en' : 'ja';
+  try { localStorage.setItem('lcadTutLang', lang); } catch (e) {}
+  document.documentElement.lang = lang;
+  applyUI();
+  buildTree();
+  render(curItem);
+}
+
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('lcadTutTheme', t); } catch (e) {}
+  const sel = document.getElementById('theme');
+  if (sel && sel.value !== t) sel.value = t;
+}
+
+function T(item, field) {          // item の言語別フィールド
+  return item[lang] || item.ja || item.en || '';
+}
+function TN(item) {                // note
+  return (lang === 'en' ? item.note_en : item.note_ja) || item.note_ja || item.note_en || '';
+}
+
+function isNew(item) {
+  return seenStamp && item.updated && item.updated > seenStamp;
+}
+
+function applyUI() {
+  const u = UI[lang];
+  document.getElementById('hSub').textContent = u.sub;
+  document.getElementById('search').placeholder = u.search;
+  document.getElementById('btnJa').classList.toggle('on', lang === 'ja');
+  document.getElementById('btnEn').classList.toggle('on', lang === 'en');
+  document.getElementById('navToggle').textContent = u.navToggle;
+  document.getElementById('fStamp').textContent =
+    u.stamp + TUTORIAL_STAMP.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5');
+  const sel = document.getElementById('theme');
+  const cur = document.documentElement.dataset.theme;
+  sel.innerHTML = '';
+  for (const k of ['leather', 'light', 'dark', 'coffee']) {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = u.themes[k]; o.selected = (k === cur);
+    sel.appendChild(o);
+  }
+}
+
+function buildTree() {
+  const nav = document.getElementById('tree');
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  nav.innerHTML = '';
+  let any = false;
+  for (const cat of DATA.cats) {
+    const items = DATA.items.filter(it => it.cat === cat.id).filter(it => {
+      if (!q) return true;
+      return ((it.ja || '') + ' ' + (it.en || '') + ' ' + (it.note_ja || '') + ' ' +
+              (it.note_en || '')).toLowerCase().includes(q);
+    });
+    if (!items.length) continue;
+    any = true;
+    const det = document.createElement('details');
+    det.className = 'cat';
+    det.open = q ? true : (cat.id === 'quickstart' ||
+                           items.some(it => it.id === (curItem && curItem.id)));
+    const sum = document.createElement('summary');
+    sum.textContent = T(cat);
+    det.appendChild(sum);
+    for (const it of items) {
+      const div = document.createElement('div');
+      div.className = 'item' + (it.status === 'planned' ? ' planned' : '') +
+                      (curItem && curItem.id === it.id ? ' sel' : '');
+      div.dataset.id = it.id;
+      div.setAttribute('role', 'button');
+      div.tabIndex = 0;
+      div.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(it, true); } };
+      const ic = document.createElement('span');
+      ic.className = 'ic';
+      ic.textContent = it.status === 'planned' ? '◌' : '▶';
+      const t = document.createElement('span');
+      t.className = 't';
+      t.textContent = T(it);
+      t.title = T(it);
+      div.appendChild(ic); div.appendChild(t);
+      if (watched[it.id]) {
+        const d = document.createElement('span');
+        d.className = 'done'; d.textContent = '✔';
+        div.appendChild(d);
+      }
+      if (isNew(it)) {
+        const b = document.createElement('span');
+        b.className = 'badge new'; b.textContent = UI[lang].newBadge;
+        div.appendChild(b);
+      }
+      div.onclick = () => { select(it, true); };
+      det.appendChild(div);
+    }
+    nav.appendChild(det);
+  }
+  if (!any) {
+    const d = document.createElement('div');
+    d.style.padding = '16px'; d.style.color = 'var(--ink2)';
+    d.textContent = UI[lang].notFound;
+    nav.appendChild(d);
+  }
+}
+
+function embed(v) {
+  const w = document.createElement('div');
+  w.className = 'vwrap';
+  const f = document.createElement('iframe');
+  f.src = 'https://www.youtube.com/embed/' + v.yt;
+  f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  f.allowFullscreen = true;
+  f.loading = 'lazy';
+  w.appendChild(f);
+  return w;
+}
+
+function videoLabel(v) { return (lang === 'en' ? v.en : v.ja) || v.ja || v.en || ''; }
+
+function memberCard(v) {
+  const u = UI[lang];
+  const c = document.createElement('div');
+  c.className = 'memberCard';
+  c.innerHTML = '<div class="big"></div><div class="mnote"></div>';
+  c.querySelector('.big').textContent = u.memberBig;
+  c.querySelector('.mnote').textContent = u.memberNote;
+  const a = document.createElement('a');
+  a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
+  a.href = 'https://www.youtube.com/watch?v=' + v.yt;
+  a.textContent = u.watchOnYT + ' — ' + videoLabel(v);
+  c.appendChild(a);
+  const j = document.createElement('a');
+  j.className = 'btn'; j.target = '_blank'; j.rel = 'noopener';
+  j.href = MEMBER_JOIN_URL;
+  j.textContent = u.joinBtn;
+  c.appendChild(j);
+  return c;
+}
+
+function refList(title, vids) {
+  const det = document.createElement('details');
+  det.className = 'old';
+  det.open = false;
+  const s = document.createElement('summary');
+  s.textContent = title;
+  det.appendChild(s);
+  for (const v of vids) {
+    const l = document.createElement('div');
+    l.className = 'vlabel'; l.style.marginTop = '10px';
+    l.textContent = videoLabel(v);
+    det.appendChild(l);
+    det.appendChild(v.member ? memberCard(v) : embed(v));
+  }
+  return det;
+}
+
+function render(item) {
+  const u = UI[lang];
+  const main = document.getElementById('content');
+  main.innerHTML = '';
+  if (!item) {                     // ウェルカム画面
+    const h = document.createElement('h2');
+    h.id = 'ttl'; h.textContent = u.welcomeTitle;
+    const p = document.createElement('div');
+    p.className = 'note'; p.textContent = u.welcomeBody;
+    main.appendChild(h); main.appendChild(p);
+    return;
+  }
+  const cat = DATA.cats.find(c => c.id === item.cat);
+  const h = document.createElement('h2');
+  h.id = 'ttl'; h.textContent = T(item);
+  const crumb = document.createElement('div');
+  crumb.id = 'crumb'; crumb.textContent = cat ? T(cat) : '';
+  main.appendChild(h); main.appendChild(crumb);
+
+  const note = document.createElement('div');
+  note.className = 'note'; note.textContent = TN(item);
+
+  if (item.status === 'video' && item.videos && item.videos.length) {
+    const first = item.videos[0];
+    if (first.member) {
+      main.appendChild(note);
+      main.appendChild(memberCard(first));
+    } else {
+      main.appendChild(embed(first));
+      const l = document.createElement('div');
+      l.className = 'vlabel'; l.textContent = videoLabel(first);
+      main.appendChild(l);
+      main.appendChild(note);
+    }
+    const rest = item.videos.slice(1);
+    if (rest.length) main.appendChild(refList(u.oldVideos, rest));
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'placeholder';
+    const b = document.createElement('div');
+    b.className = 'big'; b.textContent = u.plannedBig;
+    const n = document.createElement('div');
+    n.textContent = TN(item) || u.plannedNote;
+    ph.appendChild(b); ph.appendChild(n);
+    main.appendChild(ph);
+    if (item.refs && item.refs.length) main.appendChild(refList(u.refs, item.refs));
+  }
+
+  // 視聴済みチェック
+  const chk = document.createElement('label');
+  chk.className = 'chk';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = !!watched[item.id];
+  cb.onchange = () => {
+    if (cb.checked) watched[item.id] = 1; else delete watched[item.id];
+    try { localStorage.setItem('lcadTutWatched', JSON.stringify(watched)); } catch (e) {}
+    buildTree();
+  };
+  chk.appendChild(cb);
+  chk.appendChild(document.createTextNode(' ' + u.watched));
+  main.appendChild(chk);
+}
+
+function select(item, updateHash) {
+  curItem = item;
+  buildTree();
+  render(item);
+  document.getElementById('content').scrollTop = 0;
+  if (updateHash) {
+    const h = '#lang=' + lang + '&item=' + (item ? item.id : '') +
+              (seenStamp ? '&seen=' + seenStamp : '');
+    history.replaceState(null, '', h);
+  }
+}
+
+document.getElementById('search').addEventListener('input', buildTree);
+document.getElementById('navToggle').addEventListener('click',
+  () => document.getElementById('tree').classList.toggle('collapsed'));
+window.addEventListener('hashchange', init);
+
+function init() {
+  const h = parseHash();
+  let l = h.lang;
+  if (!l) { try { l = localStorage.getItem('lcadTutLang'); } catch (e) {} }
+  if (!l) l = (navigator.language || '').startsWith('ja') ? 'ja' : 'en';
+  lang = (l === 'en') ? 'en' : 'ja';
+
+  let th = null;
+  try { th = localStorage.getItem('lcadTutTheme'); } catch (e) {}
+  if (th) document.documentElement.dataset.theme = th;
+
+  if (h.seen && /^\d{12}$/.test(h.seen)) {
+    seenStamp = h.seen;
+  } else {
+    // ブラウザ単体で開いた場合は、前回訪問時の索引日時を localStorage から
+    try {
+      seenStamp = localStorage.getItem('lcadTutSeen') || '';
+      localStorage.setItem('lcadTutSeen', TUTORIAL_STAMP);
+    } catch (e) {}
+  }
+
+  document.documentElement.lang = lang;
+  applyUI();
+  curItem = DATA.items.find(it => it.id === h.item) || null;
+  buildTree();
+  render(curItem);
+}
+init();
+</script>
+</body>
+</html>
