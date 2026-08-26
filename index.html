@@ -77,7 +77,8 @@
     padding: 10px 16px; background: var(--bg2);
     border-bottom: 1px solid var(--line);
   }
-  header h1 { font-size: 17px; margin: 0; white-space: nowrap; }
+  header h1 { font-size: 17px; margin: 0; white-space: nowrap; cursor: pointer; }
+  header h1:hover { color: var(--acc); }
   header h1 .sub { color: var(--ink2); font-weight: normal; font-size: 12px; margin-left: 6px; }
   #search {
     flex: 1 1 160px; min-width: 120px; max-width: 340px;
@@ -152,6 +153,12 @@
     border-radius: 7px; text-decoration: none; font-size: 14px;
   }
   .note { max-width: 880px; white-space: pre-wrap; }
+  .aboutNote {
+    max-width: 880px; margin-top: 22px; padding: 14px 18px;
+    border-left: 4px solid var(--acc); border-radius: 0 8px 8px 0;
+    background: var(--panel); white-space: pre-wrap;
+    color: var(--ink2); font-size: 13.5px; line-height: 1.75;
+  }
   details.old { max-width: 880px; margin-top: 18px; }
   details.old > summary { cursor: pointer; color: var(--ink2); font-size: 13.5px; }
   .chk { margin: 18px 0 0; font-size: 13.5px; color: var(--ink2); }
@@ -179,7 +186,7 @@
 <body>
 
 <header>
-  <h1>Leathercraft CAD <span id="hSub" class="sub"></span></h1>
+  <h1 onclick="select(null, true)">Leathercraft CAD <span id="hSub" class="sub"></span></h1>
   <input id="search" type="search">
   <div class="hctl">
     <button class="langbtn" id="btnJa" onclick="setLang('ja')">日本語</button>
@@ -207,7 +214,7 @@
    このページの索引更新日時。内容を更新したらここを上げて、
    coffee-craft.net の versions の tutorial= 行も同じ値にする。
    ============================================================ */
-const TUTORIAL_STAMP = '202608261200';
+const TUTORIAL_STAMP = '202608261930';
 
 const UI = {
   ja: {
@@ -224,7 +231,8 @@ const UI = {
     newBadge: 'NEW', navToggle: '☰ 目次を開く／閉じる',
     stamp: '索引更新: ', notFound: '該当する項目がありません',
     welcomeTitle: 'ようこそ！',
-    welcomeBody: '左の目次からチュートリアルを選んでください。\n▶ の付いた項目には動画があります。作成中の項目（薄い色）も、どんな内容になるかを先に読むことができます。\n\nこのページはブラウザのブックマークに登録しておくと、アプリを起動していなくてもいつでも見られます。',
+    welcomeBody: '左の目次からチュートリアルを選んでください。\n▶ の付いた項目には動画があります。作成中の項目（薄い色）も、どんな内容になるかを先に読むことができます。\n\nこのページはブラウザのブックマークに登録しておくと、アプリを起動していなくてもいつでも見られます。左上の「Leathercraft CAD」ロゴをクリックすると、いつでもこのホーム画面に戻れます。',
+    aboutNote: 'これまでの Leathercraft CAD のチュートリアルは、主にベータ版の頃に作成したものでした。索引も無かったため、学びたい機能のチュートリアルを見つけるのは簡単ではありませんでした。\n\nそこで v4.0 からは、機能ごとの短いチュートリアル動画を用意し、機能の追加や変更があったときにも臨機応変にチュートリアルを更新できる仕組みにしました。\n\n過去に公開したチュートリアルや更新紹介動画のうち、今でもチュートリアルとして使えそうなものをいくつかリンクしてありますが、今後は v4.0 以降で作成した動画に少しずつ差し替えていく予定です。',
   },
   en: {
     sub: 'Tutorials', search: 'Search…',
@@ -240,7 +248,8 @@ const UI = {
     newBadge: 'NEW', navToggle: '☰ Toggle contents',
     stamp: 'Index updated: ', notFound: 'No matching topics',
     welcomeTitle: 'Welcome!',
-    welcomeBody: 'Pick a topic from the contents on the left.\nTopics marked with ▶ have videos. Greyed-out topics are planned — you can still read what they will cover.\n\nBookmark this page to revisit the tutorials any time, even without launching the app.',
+    welcomeBody: 'Pick a topic from the contents on the left.\nTopics marked with ▶ have videos. Greyed-out topics are planned — you can still read what they will cover.\n\nBookmark this page to revisit the tutorials any time, even without launching the app. Click the "Leathercraft CAD" logo at the top left to return to this home screen at any time.',
+    aboutNote: 'Until now, the Leathercraft CAD tutorials were mostly recorded back in the beta days, and without an index it was not easy to find a tutorial for the feature you wanted to learn.\n\nStarting with v4.0, tutorials are short, per-feature videos, built on a system that lets them be updated flexibly whenever features are added or changed.\n\nSome previously published tutorials and update videos that still work well as tutorials are linked here for now; they will gradually be replaced with videos made with v4.0 and later.',
   }
 };
 
@@ -768,7 +777,9 @@ function render(item) {
     h.id = 'ttl'; h.textContent = u.welcomeTitle;
     const p = document.createElement('div');
     p.className = 'note'; p.textContent = u.welcomeBody;
-    main.appendChild(h); main.appendChild(p);
+    const a = document.createElement('div');
+    a.className = 'aboutNote'; a.textContent = u.aboutNote;
+    main.appendChild(h); main.appendChild(p); main.appendChild(a);
     return;
   }
   const cat = DATA.cats.find(c => c.id === item.cat);
@@ -828,7 +839,7 @@ function select(item, updateHash) {
   render(item);
   document.getElementById('content').scrollTop = 0;
   if (updateHash) {
-    const h = '#lang=' + lang + '&item=' + (item ? item.id : '') +
+    const h = '#lang=' + lang + (item ? '&item=' + item.id : '') +
               (seenStamp ? '&seen=' + seenStamp : '');
     history.replaceState(null, '', h);
   }
