@@ -25,6 +25,7 @@
     videos  : [{yt:'YouTube ID', ja:'ラベル', en:'label', member:true(限定動画)}]
               先頭が最新。旧バージョンの動画は2つ目以降に置くと
               「以前のバージョンの動画」として折りたたみ表示される
+              yt の代わりに list:'再生リストID' でプレイリスト埋め込みも可
     refs    : planned の項目に付ける「参考: 旧バージョンの動画」(形式は videos と同じ)
     note_ja / note_en : 説明文 (動画が無い間の備忘録としても)
 
@@ -214,7 +215,10 @@
    このページの索引更新日時。内容を更新したらここを上げて、
    coffee-craft.net の versions の tutorial= 行も同じ値にする。
    ============================================================ */
-const TUTORIAL_STAMP = '202608261930';
+const TUTORIAL_STAMP = '202608311000';
+
+const LEGACY_PLAYLIST_JA = 'https://youtube.com/playlist?list=PL-8IKh6XA2LiQvDzb4yCiMRWd5LioeXVp';
+const LEGACY_PLAYLIST_EN = 'https://www.youtube.com/playlist?list=PL-8IKh6XA2LhFV6XOTFWSB-CFGhRFsQSb';
 
 const UI = {
   ja: {
@@ -232,6 +236,12 @@ const UI = {
     stamp: '索引更新: ', notFound: '該当する項目がありません',
     welcomeTitle: 'ようこそ！',
     welcomeBody: '左の目次からチュートリアルを選んでください。\n▶ の付いた項目には動画があります。作成中の項目（薄い色）も、どんな内容になるかを先に読むことができます。\n\nこのページはブラウザのブックマークに登録しておくと、アプリを起動していなくてもいつでも見られます。左上の「Leathercraft CAD」ロゴをクリックすると、いつでもこのホーム画面に戻れます。',
+    legacyBig: '📺 v4.0 対応のチュートリアル動画は現在制作中です',
+    legacyLead: 'それまでは、これまでに公開してきたチュートリアル動画の再生リストをご活用ください（目次の「旧チュートリアル」からも開けます）。',
+    legacyNote: '英語版のチュートリアルはまだ本数が少なめですが、今後少しずつ増やしていく予定です。',
+    legacyJaBtn: '旧チュートリアル再生リスト（日本語）',
+    legacyEnBtn: '英語チュートリアル再生リスト',
+    openPlaylist: '再生リストを YouTube で開く',
     aboutNote: 'これまでの Leathercraft CAD のチュートリアルは、主にベータ版の頃に作成したものでした。索引も無かったため、学びたい機能のチュートリアルを見つけるのは簡単ではありませんでした。\n\nそこで v4.0 からは、機能ごとの短いチュートリアル動画を用意し、機能の追加や変更があったときにも臨機応変にチュートリアルを更新できる仕組みにしました。\n\n過去に公開したチュートリアルや更新紹介動画のうち、今でもチュートリアルとして使えそうなものをいくつかリンクしてありますが、今後は v4.0 以降で作成した動画に少しずつ差し替えていく予定です。',
   },
   en: {
@@ -249,6 +259,12 @@ const UI = {
     stamp: 'Index updated: ', notFound: 'No matching topics',
     welcomeTitle: 'Welcome!',
     welcomeBody: 'Pick a topic from the contents on the left.\nTopics marked with ▶ have videos. Greyed-out topics are planned — you can still read what they will cover.\n\nBookmark this page to revisit the tutorials any time, even without launching the app. Click the "Leathercraft CAD" logo at the top left to return to this home screen at any time.',
+    legacyBig: '📺 The v4.0 tutorial videos are currently in production',
+    legacyLead: 'Until they are ready, please use the playlists of the tutorial videos published so far (also available from "Existing Tutorials" in the contents).',
+    legacyNote: 'There are still fewer English tutorials than Japanese ones — we will keep adding more English tutorials little by little.',
+    legacyJaBtn: 'Tutorial playlist (Japanese)',
+    legacyEnBtn: 'English tutorial playlist',
+    openPlaylist: 'Open the playlist on YouTube',
     aboutNote: 'Until now, the Leathercraft CAD tutorials were mostly recorded back in the beta days, and without an index it was not easy to find a tutorial for the feature you wanted to learn.\n\nStarting with v4.0, tutorials are short, per-feature videos, built on a system that lets them be updated flexibly whenever features are added or changed.\n\nSome previously published tutorials and update videos that still work well as tutorials are linked here for now; they will gradually be replaced with videos made with v4.0 and later.',
   }
 };
@@ -258,6 +274,7 @@ const UI = {
    ============================================================ */
 const DATA = {
   cats: [
+    { id: 'legacy',     ja: '旧チュートリアル',            en: 'Existing Tutorials' },
     { id: 'quickstart', ja: 'クイックスタート',            en: 'Quick Start' },
     { id: 'draw',       ja: '作図：基本図形',              en: 'Drawing: Basic Shapes' },
     { id: 'edit',       ja: '作図：編集と基本機能',        en: 'Drawing: Editing & Core Tools' },
@@ -270,6 +287,24 @@ const DATA = {
   ],
 
   items: [
+  /* ---------------- 旧チュートリアル ---------------- */
+  { id: 'legacy-playlist-ja', cat: 'legacy', status: 'video', updated: '202608311000',
+    ja: '旧チュートリアル再生リスト（日本語）',
+    en: 'Tutorial playlist (Japanese)',
+    note_ja: 'v4.0 対応のチュートリアル動画が揃うまでは、こちらの再生リストをご活用ください。ベータ版〜v3.x の頃に作成した動画のため、画面や名称が現在と異なる部分がありますが、基本的な操作の流れは同じです。',
+    note_en: 'Until the v4.0 tutorials are ready, please use this playlist. The videos were recorded with the beta–v3.x versions, so some screens and names differ from the current version, but the basic workflow is the same.',
+    videos: [ { list: 'PL-8IKh6XA2LiQvDzb4yCiMRWd5LioeXVp',
+                ja: 'レザークラフトCADベータ版チュートリアル（再生リスト）',
+                en: 'Leathercraft CAD tutorials in Japanese (playlist)' } ] },
+  { id: 'legacy-playlist-en', cat: 'legacy', status: 'video', updated: '202608311000',
+    ja: '英語チュートリアル再生リスト',
+    en: 'English tutorial playlist',
+    note_ja: '英語のチュートリアル動画の再生リストです。日本語版より本数が少なめですが、今後少しずつ増やしていく予定です。',
+    note_en: 'The playlist of English tutorial videos. There are fewer than the Japanese ones for now — we will keep adding more English tutorials little by little.',
+    videos: [ { list: 'PL-8IKh6XA2LhFV6XOTFWSB-CFGhRFsQSb',
+                ja: 'Leathercraft CAD English Tutorial Videos（再生リスト）',
+                en: 'Leathercraft CAD English Tutorial Videos (playlist)' } ] },
+
   /* ---------------- クイックスタート ---------------- */
   { id: 'qs-1', cat: 'quickstart', status: 'planned', updated: '202608261200',
     ja: 'その1：IDパスケースの型紙を作ってみる',
@@ -673,7 +708,7 @@ function buildTree() {
     any = true;
     const det = document.createElement('details');
     det.className = 'cat';
-    det.open = q ? true : (cat.id === 'quickstart' ||
+    det.open = q ? true : (cat.id === 'quickstart' || cat.id === 'legacy' ||
                            items.some(it => it.id === (curItem && curItem.id)));
     const sum = document.createElement('summary');
     sum.textContent = T(cat);
@@ -721,7 +756,8 @@ function embed(v) {
   const w = document.createElement('div');
   w.className = 'vwrap';
   const f = document.createElement('iframe');
-  f.src = 'https://www.youtube.com/embed/' + v.yt;
+  f.src = v.list ? 'https://www.youtube.com/embed/videoseries?list=' + v.list
+                 : 'https://www.youtube.com/embed/' + v.yt;
   f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   f.allowFullscreen = true;
   f.loading = 'lazy';
@@ -777,9 +813,31 @@ function render(item) {
     h.id = 'ttl'; h.textContent = u.welcomeTitle;
     const p = document.createElement('div');
     p.className = 'note'; p.textContent = u.welcomeBody;
+    // 旧チュートリアル再生リストへの案内 (v4.0 動画が揃うまでのつなぎ)
+    const lg = document.createElement('div');
+    lg.className = 'placeholder';
+    const lb = document.createElement('div');
+    lb.className = 'big'; lb.textContent = u.legacyBig;
+    const ll = document.createElement('div');
+    ll.textContent = u.legacyLead;
+    lg.appendChild(lb); lg.appendChild(ll);
+    const mkBtn = (href, text) => {
+      const b = document.createElement('a');
+      b.className = 'btn'; b.target = '_blank'; b.rel = 'noopener';
+      b.href = href; b.textContent = text;
+      return b;
+    };
+    const btnJa = mkBtn(LEGACY_PLAYLIST_JA, u.legacyJaBtn);
+    const btnEn = mkBtn(LEGACY_PLAYLIST_EN, u.legacyEnBtn);
+    if (lang === 'en') { lg.appendChild(btnEn); lg.appendChild(btnJa); }
+    else               { lg.appendChild(btnJa); lg.appendChild(btnEn); }
+    const ln = document.createElement('div');
+    ln.style.marginTop = '10px'; ln.style.color = 'var(--ink2)';
+    ln.style.fontSize = '13px'; ln.textContent = u.legacyNote;
+    lg.appendChild(ln);
     const a = document.createElement('div');
     a.className = 'aboutNote'; a.textContent = u.aboutNote;
-    main.appendChild(h); main.appendChild(p); main.appendChild(a);
+    main.appendChild(h); main.appendChild(p); main.appendChild(lg); main.appendChild(a);
     return;
   }
   const cat = DATA.cats.find(c => c.id === item.cat);
@@ -803,6 +861,13 @@ function render(item) {
       l.className = 'vlabel'; l.textContent = videoLabel(first);
       main.appendChild(l);
       main.appendChild(note);
+      if (first.list) {            // プレイリストは YouTube 側でも開けるように
+        const a = document.createElement('a');
+        a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
+        a.href = 'https://www.youtube.com/playlist?list=' + first.list;
+        a.textContent = u.openPlaylist;
+        main.appendChild(a);
+      }
     }
     const rest = item.videos.slice(1);
     if (rest.length) main.appendChild(refList(u.oldVideos, rest));
