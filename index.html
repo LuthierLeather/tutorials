@@ -27,6 +27,10 @@
               「以前のバージョンの動画」として折りたたみ表示される
               yt の代わりに list:'再生リストID' でプレイリスト埋め込みも可
     refs    : planned の項目に付ける「参考: 旧バージョンの動画」(形式は videos と同じ)
+    links   : [{ja:'表示名', en:'label', url:'URL',
+                url_ja / url_en : 言語ごとにURLが違う場合はこちら (url より優先)}]
+              動画ではない解説記事へのリンク。動画があってもなくても出る。
+              URL が 'TODO' で始まる項目は表示されない (公開前の下書き用)
     note_ja / note_en : 説明文 (動画が無い間の備忘録としても)
 
   ■ アプリからの起動パラメータ (URLハッシュ)
@@ -142,6 +146,14 @@
   }
   .vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .vlabel { color: var(--ink2); font-size: 12.5px; margin-bottom: 14px; }
+  .links { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .links .lbl { color: var(--ink2); font-size: 12.5px; margin-bottom: 6px; }
+  .links a {
+    display: block; color: var(--acc); text-decoration: none;
+    font-size: 14px; padding: 4px 0; line-height: 1.5;
+  }
+  .links a:hover { text-decoration: underline; }
+  .links a::before { content: '📄 '; }
   .memberCard, .placeholder {
     max-width: 880px; border: 1px dashed var(--line); border-radius: 10px;
     background: var(--panel); padding: 22px 24px; margin: 10px 0 16px;
@@ -215,7 +227,7 @@
    このページの索引更新日時。内容を更新したらここを上げて、
    coffee-craft.net の versions の tutorial= 行も同じ値にする。
    ============================================================ */
-const TUTORIAL_STAMP = '202608311500';
+const TUTORIAL_STAMP = '202609211700';
 
 const LEGACY_PLAYLIST_JA = 'https://youtube.com/playlist?list=PL-8IKh6XA2LiQvDzb4yCiMRWd5LioeXVp';
 const LEGACY_PLAYLIST_EN = 'https://www.youtube.com/playlist?list=PL-8IKh6XA2LhFV6XOTFWSB-CFGhRFsQSb';
@@ -227,6 +239,7 @@ const UI = {
     plannedBig: '🎬 この項目の動画は準備中です',
     plannedNote: '動画ができるまで、しばらくお待ちください。',
     refs: '参考: 以前のバージョンで撮影した動画',
+    links: '解説記事',
     oldVideos: '以前のバージョンの動画',
     memberBig: '🔑 この動画は YouTube メンバーシップ限定です',
     memberNote: 'メンバーの方は下のボタンから YouTube でご覧いただけます（ブラウザで YouTube にログインしている必要があります）。',
@@ -250,6 +263,7 @@ const UI = {
     plannedBig: '🎬 The video for this topic is coming soon',
     plannedNote: 'Please check back later.',
     refs: 'Reference: videos recorded with earlier versions',
+    links: 'Articles',
     oldVideos: 'Videos from earlier versions',
     memberBig: '🔑 This video is for YouTube channel members',
     memberNote: 'Members can watch it on YouTube using the button below (you need to be signed in to YouTube in this browser).',
@@ -425,13 +439,16 @@ const DATA = {
     note_ja: 'はみ出した線の切り落とし、交点での分割、Zキーでの延長・トリミング。',
     note_en: 'Cutting off overshoots, splitting at intersections, extending/trimming with the Z key.',
     refs: [ { yt: 'NZczNr95Wig', ja: 'v1.1.0 紹介（寸法線・トリミング・円弧）', en: 'v1.1.0 intro (dimensions, trimming, arcs)' } ] },
-  { id: 'edit-stitch', cat: 'edit', status: 'video', updated: '202608261200',
+  { id: 'edit-stitch', cat: 'edit', status: 'video', updated: '202609211700',
     ja: '目打ち（縫い穴）',
     en: 'Stitch holes (pricking)',
-    note_ja: '縫い線に沿った目打ち、ピッチの調整、穴数を指定した目打ち。',
-    note_en: 'Punching holes along stitch lines, adjusting pitch, and fixing the number of holes.',
+    note_ja: '縫い線に沿った目打ち、ピッチの調整、穴数を指定した目打ち。v4.2.0 からは固定ピッチのときに、割り切れない「余り」をどこへ置くか（終端へ／両端へ均等／数箇所で調整）を選べるようになりました。',
+    note_en: 'Punching holes along stitch lines, adjusting pitch, and fixing the number of holes. From v4.2.0, a fixed pitch also lets you choose where the length that does not divide evenly goes: the far end, split between both ends, or eased into a few gaps.',
     videos: [ { yt: 'fL0u2dV4XI0', ja: '目打ち機能の使い方 (#02)', en: 'How to use pricking (#02)' },
-              { yt: '3QqJiJ5ng-M', ja: 'v2.5.6 穴数を指定した目打ち', en: 'v2.5.6 fixed-count pricking' } ] },
+              { yt: '3QqJiJ5ng-M', ja: 'v2.5.6 穴数を指定した目打ち', en: 'v2.5.6 fixed-count pricking' } ],
+    links: [ { ja: '縫い穴の決め方 ── ピッチと「余り」の置き場所',
+               en: 'How Stitch Holes Are Placed — Pitch and the Leftover',
+               url_ja: 'TODO-公開URL-JA', url_en: 'TODO-public-url-en' } ] },
   { id: 'edit-align', cat: 'edit', status: 'planned', updated: '202608261200',
     ja: '整列とスマートアライメント',
     en: 'Alignment & Smart Alignment',
@@ -795,6 +812,29 @@ function memberCard(v) {
   return c;
 }
 
+// 動画ではない解説記事のリスト。URL が 'TODO' で始まるものは公開前の下書きなので
+// 出さない —— 誤ってマージされても壊れたリンクが表に出ないようにするため。
+function linkList(title, links) {
+  const live = links.filter(l => {
+    const u = l['url_' + lang] || l.url || '';
+    return u && !u.startsWith('TODO');
+  });
+  if (!live.length) return null;
+  const box = document.createElement('div');
+  box.className = 'links';
+  const lbl = document.createElement('div');
+  lbl.className = 'lbl'; lbl.textContent = title;
+  box.appendChild(lbl);
+  for (const l of live) {
+    const a = document.createElement('a');
+    a.target = '_blank'; a.rel = 'noopener';
+    a.href = l['url_' + lang] || l.url;
+    a.textContent = T(l);
+    box.appendChild(a);
+  }
+  return box;
+}
+
 function refList(title, vids) {
   const det = document.createElement('details');
   det.className = 'old';
@@ -889,6 +929,11 @@ function render(item) {
     ph.appendChild(b); ph.appendChild(n);
     main.appendChild(ph);
     if (item.refs && item.refs.length) main.appendChild(refList(u.refs, item.refs));
+  }
+
+  if (item.links && item.links.length) {
+    const ll = linkList(u.links, item.links);
+    if (ll) main.appendChild(ll);
   }
 
   // 視聴済みチェック
